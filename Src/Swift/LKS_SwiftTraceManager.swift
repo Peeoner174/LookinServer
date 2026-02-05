@@ -19,15 +19,17 @@ public class LKS_SwiftTraceManager: NSObject {
         var currClass: AnyClass? = type(of: hostObject)
         let initialInClass: AnyClass? = currClass
         
-        while let m = mirror, let unwrappedCurrClass = currClass {
-            m.children.forEach { child in
-                processChildSimply(child,
-                                 hostObject: hostObject,
-                                 currentClass: unwrappedCurrClass,
-                                 initialClass: initialInClass)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+            while let m = mirror, let unwrappedCurrClass = currClass {
+                m.children.forEach { child in
+                    processChildSimply(child,
+                                       hostObject: hostObject,
+                                       currentClass: unwrappedCurrClass,
+                                       initialClass: initialInClass)
+                }
+                mirror = m.superclassMirror
+                currClass = unwrappedCurrClass.superclass()
             }
-            mirror = m.superclassMirror
-            currClass = unwrappedCurrClass.superclass()
         }
     }
 
