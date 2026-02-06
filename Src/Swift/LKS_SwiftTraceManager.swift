@@ -19,17 +19,17 @@ public class LKS_SwiftTraceManager: NSObject {
         var currClass: AnyClass? = type(of: hostObject)
         let initialInClass: AnyClass? = currClass
         
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
-            while let m = mirror, let unwrappedCurrClass = currClass {
-                m.children.forEach { child in
+        while let m = mirror, let unwrappedCurrClass = currClass {
+            m.children.forEach { child in
+                if child.label != "timer" {
                     processChildSimply(child,
                                        hostObject: hostObject,
                                        currentClass: unwrappedCurrClass,
                                        initialClass: initialInClass)
                 }
-                mirror = m.superclassMirror
-                currClass = unwrappedCurrClass.superclass()
             }
+            mirror = m.superclassMirror
+            currClass = unwrappedCurrClass.superclass()
         }
     }
 
@@ -71,7 +71,9 @@ public class LKS_SwiftTraceManager: NSObject {
         var actualValue: Any? = nil
         
         // Проверяем опциональность value
-        let valueMirror = Mirror(reflecting: valueElement)
+        guard let valueMirror = safeMirror(for: valueElement) else {
+            return
+        }
         if valueMirror.displayStyle == .optional {
             if valueMirror.children.isEmpty {
                 // nil - пропускаем
@@ -123,6 +125,19 @@ public class LKS_SwiftTraceManager: NSObject {
             }
         }
         nsObjectValue.lks_ivarTraces = (nsObjectValue.lks_ivarTraces ?? []) + [ivarTrace]
+    }
+
+    static func safeMirror(for object: Any) -> Mirror? {
+        // Проверяем, является ли объект NSTimer
+        if let timer = object as? Timer {   
+            // Проверяем, валиден ли таймер
+            // NSTimer имеет свойство valid, но доступ к нему тоже может крашиться
+            // Используем безопасный доступ через objc
+            guard timer.isKind(of: Timer.self) else { return nil }
+        }
+        
+        // Пробуем создать Mirror с обработкой ошибок
+        return Mirror(reflecting: object)
     }
 
     // 比如 superClass 可能是 UIView，而 childClass 可能是 UIButton
